@@ -1,6 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"bufio"
+	"fmt"
+	"net"
+	"strconv"
+)
 
 func calc_ols_params(y []float64, x [][]float64, n_iterations int, alpha float64) []float64 {
 
@@ -45,23 +50,50 @@ func calc_gradient(diffs []float64, x [][]float64) []float64 {
 	return gradient
 }
 
+func manejador(con net.Conn) {
+
+	defer con.Close()
+	r := bufio.NewReader(con)
+	for {
+		//recuperando el mensaje enviado desde la APP cliente
+		//recuperando el mensaje enviado desde la APP cliente
+		msg, _ := r.ReadString('\n')
+
+		fmt.Printf("Recibido: %s", msg)
+
+		f, _ := strconv.ParseFloat(msg, 8)
+		y := []float64{3, f, 5, 6, 7}
+		x := [][]float64{{1, 1, 1, 1, 1}, {4, 3, 2, 1, 3}}
+
+		thetas := calc_ols_params(y, x, 100000, 0.001)
+
+		y_2 := []float64{1, 2, 3, 4, 3, 4, 5, 4, 5, 5, 4, 5, 4, 5, 4, 5, 6, 5, 4, 5, 4, 3, 4}
+
+		x_2 := [][]float64{{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+			{4, 2, 3, 4, 5, 4, 5, 6, 7, 4, 8, 9, 8, 8, 6, 6, 5, 5, 5, 5, 5, 5, 5},
+			{4, 1, 2, 3, 4, 5, 6, 7, 5, 8, 7, 8, 7, 8, 7, 8, 7, 7, 7, 7, 7, 6, 5},
+			{4, 1, 2, 5, 6, 7, 8, 9, 7, 8, 7, 8, 7, 7, 7, 7, 7, 7, 6, 6, 4, 4, 4}}
+
+		thetas_2 := calc_ols_params(y_2, x_2, 100000, 0.001)
+
+		//enviando el mensaje de respuesta hacia la APPcliente
+		fmt.Fprintf(con, "Conforme!!!\n")
+		fmt.Println("Thetas : ", thetas)
+		fmt.Println("Thetas_2 : ", thetas_2)
+	}
+}
+
 func main() {
-	y := []float64{3, 4, 5, 6, 7}
-	x := [][]float64{{1, 1, 1, 1, 1}, {4, 3, 2, 1, 3}}
 
-	thetas := calc_ols_params(y, x, 100000, 0.001)
+	ln, _ := net.Listen("tcp", "localhost:8000")
 
-	fmt.Println("Thetas : ", thetas)
+	defer ln.Close()
+	//escucha constante
+	for {
 
-	y_2 := []float64{1, 2, 3, 4, 3, 4, 5, 4, 5, 5, 4, 5, 4, 5, 4, 5, 6, 5, 4, 5, 4, 3, 4}
+		con, _ := ln.Accept()
+		go manejador(con) //permite atender concurrentemente las solicitudes de los clientes
 
-	x_2 := [][]float64{{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-		{4, 2, 3, 4, 5, 4, 5, 6, 7, 4, 8, 9, 8, 8, 6, 6, 5, 5, 5, 5, 5, 5, 5},
-		{4, 1, 2, 3, 4, 5, 6, 7, 5, 8, 7, 8, 7, 8, 7, 8, 7, 7, 7, 7, 7, 6, 5},
-		{4, 1, 2, 5, 6, 7, 8, 9, 7, 8, 7, 8, 7, 7, 7, 7, 7, 7, 6, 6, 4, 4, 4}}
-
-	thetas_2 := calc_ols_params(y_2, x_2, 100000, 0.001)
-
-	fmt.Println("Thetas_2 : ", thetas_2)
+	}
 
 }
